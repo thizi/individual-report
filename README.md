@@ -1,3 +1,79 @@
+# Agent vocal local : sécurité et autonomie des agents IA
+
+Prototype d'agent vocal qui fonctionne en local, sans internet, et revue de littérature sur la sécurité des agents IA (doctorat, en cours).
+
+## Contexte
+
+Les agents IA peuvent agir (lire des fichiers, utiliser des outils), ce qui crée de nouveaux risques de sécurité. Ce projet combine la lecture d'articles et la construction d'un prototype pour les étudier concrètement.
+
+## Revue de littérature
+
+| Article | But |
+|---|---|
+| **From Threat to Trust** | Méthode pour évaluer les risques d'un agent IA, couche par couche |
+| **ART** (concours *Security Challenges in AI Agent Deployment*) | Mesurer si des agents respectent leurs règles face à des attaques : 1,8 million d'attaques contre 22 agents, presque tous ont violé leurs règles en 10 à 100 essais |
+| **AgentDojo** | Environnement de test pour mesurer la résistance des agents aux *prompt injections* |
+| **Large Multimodal Agents: A Survey** (en cours) | État de l'art des agents multimodaux, décrits en 4 composants : perception, planification, action, mémoire |
+
+## Le prototype
+
+### Fonctionnement
+
+```text
+Audio / micro -> Faster-Whisper -> texte -> Ollama + Qwen3:8b -> fichier _analyse.txt
+```
+
+1. L'entrée est un fichier audio ou le micro.
+2. **Faster-Whisper** transcrit la voix en texte.
+3. **Qwen3:8b**, exécuté par **Ollama**, analyse le texte.
+4. Le résultat (transcription et analyse) est écrit dans un fichier `.txt`.
+
+### Composants
+
+| Composant | Rôle |
+|---|---|
+| Python 3.14.7 + `.venv` | Langage du programme, environnement séparé |
+| `agent_vocal.py` | Script qui coordonne les étapes |
+| Faster-Whisper (`small`) | Reconnaissance vocale |
+| Ollama | Exécution locale du modèle de langage |
+| Qwen3:8b | Analyse du texte transcrit |
+| Fichiers `.wav` / `.txt` | Son enregistré / transcription et analyse |
+
+### Lancer le programme
+
+```powershell
+cd C:\Users\thizi\agent-vocal
+.\.venv\Scripts\python.exe .\agent_vocal.py
+```
+
+> On appelle directement `python.exe` du `.venv`, car `Activate.ps1` est bloqué par la politique d'exécution de PowerShell.
+
+## Tests réalisés
+
+- [x] Qwen3:8b répond dans le terminal
+- [x] Python communique avec Ollama (« Connexion réussie »)
+- [x] Le micro produit un fichier `.wav`
+- [x] La transcription et l'analyse produisent un fichier `_analyse.txt`
+- [x] Test complet avec le Wi-Fi coupé
+
+## Limites
+
+- Prototype à étapes fixes, pas un agent autonome.
+- Qwen reçoit le texte transcrit, pas le son.
+- Analyse du ton de la voix NON AJOUTER.
+
+
+## Fil conducteur
+
+Le survey décrit les composants d'un agent, *From Threat to Trust* aide à évaluer leurs risques, ART et AgentDojo les mesurent, et le prototype sert de petit banc d'essai concret.
+
+## Feuille de route
+
+- [ ] Terminer le survey *Large Multimodal Agents* et rédiger une fiche (but, idée principale, limites, lien avec le prototype)
+- [ ] Rendre le prototype plus autonome : Qwen choisit lui-même ses outils (smolagents, LangChain ou appel d'outils d'Ollama)
+- [ ] Ajouter l'analyse des émotions et du ton de la voix : librosa, openSMILE, modèle wav2vec2
+-------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
 # Local voice agent: security and autonomy of AI agents
 
 A voice agent prototype that runs locally, without internet, plus a literature review on the security of AI agents (PhD work in progress).
