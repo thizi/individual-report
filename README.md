@@ -148,8 +148,7 @@ The survey describes the components of an agent, *From Threat to Trust* helps as
 ------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------
-#Responsible Agentic AI — Progress Update ( 19.10.2026)
-
+Responsible Agentic AI — Progress Update (English version)
 This document summarizes recent progress across two complementary activities: reviewing a paper on attacks and defenses for AI agents, and exploring a local voice-agent prototype.
 Research project
 The overall goal is to study how to identify, assess, and reduce security risks in autonomous AI agents, especially when they can reason, use tools, store information, and act in real environments. In parallel, the voice prototype provides a practical setting for exploring local speech processing and vocal-signal analysis.
@@ -257,9 +256,3 @@ Conclusion
 This period combined theoretical progress with practical exploration. Reading the paper improved my understanding of common attacks against AI agents and the defenses discussed in the literature. In parallel, the voice prototype allowed me to test local speech and language tools while exposing the challenges of inferring emotion directly from the voice. The next step is to stabilize the prototype, evaluate its results more carefully, and clearly document its limitations.
 Reference
 Tamuka, N., Mathonsi, T. E., Otieno, O. T., Maswikaneng, S., Muchenje, T., & Tshilongamulenzhe, T. M. (2026). Securing LLM-based agents against cyberattacks: a comprehensive survey on attack techniques and defense strategies. Journal of Computer Virology and Hacking Techniques, 22, Article 38. https://doi.org/10.1007/s11416-026-00622-3
-
-## Roadmap
-
-- [ ] Finish the *Large Multimodal Agents* survey and write a summary sheet (goal, main idea, limitations, link to the prototype)
-- [ ] Make the prototype more autonomous: Qwen chooses its own tools (smolagents, LangChain, or Ollama tool calling)
-- [ ] Add emotion and voice tone analysis: librosa, openSMILE, wav2vec2 model
