@@ -456,7 +456,7 @@ J'ai modifié les prompts de Qwen pour qu'il identifie les émotions possibles (
 Testé avec **FunASR 1.4.16** dans un environnement séparé. Il analyse directement le signal audio, sans transcription.
 
 - **Enregistrements courts :** il a renvoyé des catégories d'émotion avec des scores. Un résultat a donné environ **99,98 % `sad`** alors que je parlais simplement doucement. Un seul enregistrement ne permet pas de dire si le modèle s'est trompé ni pourquoi, mais cela montre qu'un score élevé n'est pas une preuve de l'état émotionnel réel d'une personne. D'autres tests sont nécessaires.
-- **Long enregistrement (environ 32 min) :** l'analyse a échoué avec un besoin en mémoire **supérieur à 100 Go**, contre mes 8 Go de VRAM. La cause n'est pas confirmée ; elle peut dépendre de la façon dont l'audio est chargé ou traité, donc cela ne signifie pas que le modèle a toujours besoin d'autant.
+- **Long enregistrement (environ 16 min) :** l'analyse a échoué avec un besoin en mémoire **supérieur à 100 Go**, contre mes 8 Go de VRAM. La cause n'est pas confirmée ; elle peut dépendre de la façon dont l'audio est chargé ou traité, donc cela ne signifie pas que le modèle a toujours besoin d'autant.
 - **Le découpage en segments plus petits** n'a pas résolu le problème dans ma configuration.
 
 Cette expérience reste **séparée** de `agent_vocal.py`.
