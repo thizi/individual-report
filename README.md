@@ -256,9 +256,249 @@ Conclusion
 This period combined theoretical progress with practical exploration. Reading the paper improved my understanding of common attacks against AI agents and the defenses discussed in the literature. In parallel, the voice prototype allowed me to test local speech and language tools while exposing the challenges of inferring emotion directly from the voice. The next step is to stabilize the prototype, evaluate its results more carefully, and clearly document its limitations.
 Reference
 Tamuka, N., Mathonsi, T. E., Otieno, O. T., Maswikaneng, S., Muchenje, T., & Tshilongamulenzhe, T. M. (2026). Securing LLM-based agents against cyberattacks: a comprehensive survey on attack techniques and defense strategies. Journal of Computer Virology and Hacking Techniques, 22, Article 38. https://doi.org/10.1007/s11416-026-00622-3
+----------------------------------------------------------------------
 
+# 10.11.2026 # VERSION FRANCAIS
+
+# Rapport d'avancement : revue de littérature et agent vocal local
+
+
+---
+
+## 1. Vue d'ensemble
+
+Mon travail actuel comporte deux parties complémentaires :
+
+1. **Revue de littérature :** comprendre les risques de sécurité, les techniques d'attaque, les méthodes d'évaluation et les stratégies de défense des systèmes d'IA agentique (Partie A).
+2. **Développement pratique :** un prototype local de traitement de la voix et deux approches d'analyse des émotions (Partie B).
+
+La revue de littérature m'aide à comprendre l'état de la recherche, tandis que le prototype me donne une expérience concrète de l'inférence locale, du traitement des données et de l'intégration de composants d'IA.
+
+---
+
+# Partie A : Revue de littérature
+
+## 2. Résumé de la mise à jour de la littérature
+
+Depuis le dernier rapport, j'ai lu **trois articles supplémentaires** sur la sécurité des agents basés sur des LLM. Ils se complètent :
+
+- **L'article 1** est un **état de l'art (survey)** qui cartographie l'ensemble des attaques et des défenses contre les agents basés sur des LLM.
+- **L'article 2** est une **étude expérimentale** qui mesure dans quelle mesure des défenses précises protègent les agents utilisant des outils contre l'injection de prompt indirecte, et ce qu'elles coûtent en utilité.
+- **L'article 3** est un **article de benchmark** (ASB) qui teste les attaques et les défenses à chaque étape d'un agent (prompt utilisateur, outils, mémoire, prompt système) et propose une nouvelle attaque de type backdoor.
+
+Ensemble, ils font passer ma revue de « quelles attaques existent » à « comment savoir si une défense fonctionne vraiment », et d'une seule surface d'attaque (l'injection de prompt indirecte) à l'ensemble de la chaîne de l'agent.
+
+---
+
+## 3. Articles lus
+
+### Article 1 : Securing LLM-Based Agents Against Cyberattacks: A Comprehensive Survey on Attack Techniques and Defense Strategies
+
+**Référence :** N. Tamuka et al., *Securing LLM-based agents against cyberattacks: a comprehensive survey on attack techniques and defense strategies*, Journal of Computer Virology and Hacking Techniques, 22, article 38, 2026. DOI : [10.1007/s11416-026-00622-3](https://doi.org/10.1007/s11416-026-00622-3)
+
+**Objectif principal.** Donner un aperçu des cyberattaques visant les agents basés sur des LLM et des stratégies de défense proposées contre elles, organisées dans une taxonomie.
+
+**Approche.** Les auteurs ont cherché dans Web of Science et Scopus (2021 à 2026), examiné les études existantes et les ont organisées autour d'une architecture d'agent à cinq couches (entrée, planification, modèle, mémoire, outils/actions). Les attaques sont regroupées en cinq familles (Figure 1 de l'article) :
+
+1. Injection de prompt et détournement d'instructions
+2. Fuite d'information
+3. Induction de sorties et d'actions malveillantes (y compris le mauvais usage d'outils et l'injection SQL)
+4. Épuisement des ressources (déni de service)
+5. Transformations adversariales des entrées (encodage, langues rares, prompts indirects)
+
+Les défenses sont regroupées en cinq catégories : nettoyage des entrées, entraînement adversarial et alignement, protections d'architecture (isolation, validation, moindre privilège), surveillance et garde-fous, et filigrane/vérification de provenance.
+
+**Principaux résultats.**
+- Les risques de sécurité d'un agent dépassent le modèle de langage : les outils, la récupération d'information, la mémoire et la communication multi-agents ajoutent chacun des possibilités d'attaque.
+- Aucune défense ne suffit seule ; les auteurs recommandent la **défense en profondeur**, les protections d'architecture étant considérées comme la plus forte protection contre les actions malveillantes.
+- Lacunes persistantes : faible généralisation des défenses face à des attaquants adaptatifs, évaluation limitée du risque lié à l'interaction agent-outil, absence de benchmarks standardisés couvrant tous les types d'attaques, et peu de travaux sur l'empoisonnement de mémoire, la propagation multi-agents et les entrées multimodales.
+
+**Limites (mon analyse).** La recherche ne couvre que deux bases de données, le processus de sélection n'est pas quantifié, certains choix de références semblent faiblement liés aux affirmations qu'ils soutiennent, et le survey n'a pas d'expériences propres.
+
+**Pertinence pour ma recherche.** Il m'aide à structurer mon état de l'art et à identifier des lacunes de recherche. Il guide le choix des menaces et des protections à étudier, en particulier l'injection de prompt, la fuite d'information, le mauvais usage d'outils et la fiabilité des agents.
+
+### Article 2 : Evaluating Indirect Prompt Injection Defenses in Tool-Using LLM Agents: Security, Utility, and Replication
+
+**Référence :** A. Khan, K. AlKhanbashi et A. Mohamed, *Evaluating Indirect Prompt Injection Defenses in Tool-Using LLM Agents: Security, Utility, and Replication*, Computers, 15(9), 570, 2026. DOI : [10.3390/computers15090570](https://doi.org/10.3390/computers15090570)
+
+**Objectif principal.** Mesurer l'efficacité de plusieurs défenses contre l'**injection de prompt indirecte** (IPI), où un agent lit un contenu non fiable (un document, un e-mail, un enregistrement de transaction) qui contient des instructions cachées destinées à orienter son comportement. La question n'est pas seulement « l'attaque réussit-elle ? » mais aussi « que coûte la défense à l'agent ? ».
+
+**Approche.**
+- Benchmark : **AgentDojo**, suite *banking* (16 tâches légitimes × 9 objectifs d'injection = 144 cas d'attaque par exécution).
+- Modèles : GPT-5.4, GPT-5.4-mini, Claude Sonnet 4.6.
+- Configurations : aucune défense, **Spotlighting**, **Repeat User Prompt**, **Prompt Injection Detector** et **Tool Filter** (modèles OpenAI uniquement).
+- Métriques : taux de réussite des attaques (ASR), utilité bénigne (BU), utilité sous attaque (UUA), faisabilité des objectifs d'attaque, actions disponibles, mesures opérationnelles.
+- Deux réplications indépendantes par configuration, avec des intervalles de confiance de Wilson et des tests de McNemar appariés avec correction de Holm.
+
+**Principaux résultats.**
+- L'ASR brut sans défense était de 0/288 (GPT-5.4), 11/288 (GPT-5.4-mini) et 1/288 (Claude Sonnet 4.6). Les auteurs avertissent que ces différences ne mesurent pas proprement la robustesse, car les objectifs d'attaque n'étaient pas également atteignables pour tous les modèles.
+- Pour GPT-5.4-mini, le Prompt Injection Detector et le Tool Filter ont donné l'ASR le plus bas, mais aussi une utilité bénigne bien plus faible (37,5 % et 25,0 %, contre 75,0 % sans défense). Le Tool Filter fonctionne en restreignant les actions disponibles.
+- Le Prompt Injection Detector a réduit l'utilité bénigne pour les trois modèles.
+- Les défenses légères basées sur le prompt ont conservé une meilleure utilité mais ont montré des gains de sécurité limités ou incertains.
+- Aucune comparaison appariée sur GPT-5.4-mini n'est restée significative après la correction de Holm. L'utilité bénigne était plus stable d'une exécution à l'autre que les rares succès d'attaque.
+
+**Message principal.** Une défense doit être jugée sur la sécurité **et** l'utilité ensemble, en tenant compte de la faisabilité de l'objectif d'attaque, des actions qui restent disponibles et de la variabilité des résultats entre exécutions.
+
+**Limites (rapportées ou déduites).** Un seul domaine de benchmark, une seule famille d'attaques, très peu d'attaques réussies, seulement deux réplications, traces par instance partiellement manquantes, et résultats propres aux modèles et aux implémentations de défense testés.
+
+**Pertinence pour ma recherche.** Il montre pourquoi les défenses doivent être évaluées par leur effet sur le fonctionnement normal de l'agent autant que par la prévention des attaques. Il se relie aussi directement à ma lecture précédente d'*AgentDojo*, puisque cette étude utilise ce benchmark.
+
+### Article 3 : Agent Security Bench (ASB): Formalizing and Benchmarking Attacks and Defenses in LLM-based Agents
+
+**Référence :** H. Zhang, J. Huang, K. Mei, Y. Yao, Z. Wang, C. Zhan, H. Wang et Y. Zhang, *Agent Security Bench (ASB): Formalizing and Benchmarking Attacks and Defenses in LLM-based Agents*, International Conference on Learning Representations (ICLR), 2025. arXiv : [2410.02644](https://arxiv.org/abs/2410.02644)
+
+**Benchmark (GitHub) :** [https://github.com/agiresearch/ASB](https://github.com/agiresearch/ASB). Le dépôt contient les scripts d'attaque (DPI, IPI, empoisonnement de mémoire, backdoor PoT), les fichiers de configuration et les outils simulés utilisés dans les expériences de l'article.
+
+**Objectif principal.** Fournir un benchmark qui évalue les attaques et les défenses contre les agents basés sur des LLM à **chaque étape de fonctionnement** de l'agent. Les auteurs soutiennent que les benchmarks précédents (InjecAgent, AgentDojo) testent un seul type d'attaque (l'injection de prompt indirecte) ou seulement quelques scénarios.
+
+**Approche.**
+- L'agent est attaqué à quatre points d'entrée : le **prompt utilisateur** (injection de prompt directe, DPI), les **réponses des outils** (injection de prompt indirecte, IPI), la **mémoire** (empoisonnement de mémoire) et le **prompt système** (une nouvelle attaque backdoor Plan-of-Thought (PoT)). Les attaques peuvent aussi être combinées (attaques mixtes).
+- La **backdoor PoT** cache un lien entre un déclencheur et un outil dans les démonstrations du prompt système. Elle ne demande aucun entraînement du modèle : l'agent l'apprend par apprentissage en contexte, et se comporte normalement quand le déclencheur est absent.
+- Contenu du benchmark : 10 scénarios (e-commerce, finance, conduite autonome, médecine, entre autres), 10 agents, plus de 400 outils, 400 tâches d'attaque, 27 méthodes d'attaque et de défense, et 7 métriques. Les appels d'outils sont simulés pour garantir la reproductibilité.
+- 13 LLM de base (LLaMA3 et 3.1, Gemma2, Mixtral, Qwen2, GPT-3.5 Turbo, GPT-4o, GPT-4o-mini, Claude 3.5 Sonnet).
+- Métriques : taux de réussite des attaques (ASR), taux de refus (RR), performance sans attaque (PNA), performance bénigne (BP), taux de faux négatifs et de faux positifs (FNR, FPR) pour les détecteurs, et une nouvelle métrique, la **Net Resilient Performance (NRP = PNA × (1 − ASR))**, qui combine utilité et sécurité.
+- Huit défenses distinctes : délimiteurs, prévention par instruction, prévention sandwich, paraphrase, réécriture dynamique du prompt, mélange (shuffle), détection par perplexité et détection par LLM.
+
+**Principaux résultats.**
+- Toutes les attaques sont efficaces. ASR moyen : attaque mixte **84,30 %**, DPI 72,68 %, backdoor PoT 42,12 %, IPI 27,55 %, empoisonnement de mémoire 7,92 %. Les taux de refus moyens restent faibles (environ 5,7 %).
+- Les modèles plus capables sont d'abord **plus vulnérables** (ils suivent mieux les instructions, y compris les malveillantes). La vulnérabilité ne baisse que pour les modèles les plus avancés, qui refusent plus souvent.
+- Les défenses sont faibles. Sur la DPI (78,38 % d'ASR sans défense), la paraphrase donne 56,87 % et la réécriture dynamique 44,45 %, tandis que les délimiteurs et la prévention par instruction ne changent presque rien. Sur l'IPI (27,98 % sans défense), la meilleure défense gagne environ 3 points. Les détecteurs contre l'empoisonnement de mémoire ratent environ 66 % des attaques (FNR 0,660).
+- Les défenses réduisent aussi légèrement la performance normale (par exemple −6,94 points en moyenne pour les délimiteurs).
+- La NRP classe Claude 3.5 Sonnet en premier (43,56 %), puis LLaMA3-70B (30,03 %) et GPT-4o (28,12 %). La performance d'un agent est généralement inférieure à la qualité du modèle sous-jacent sur les classements, donc choisir un modèle uniquement d'après les classements ne suffit pas.
+
+**Limites (rapportées ou déduites).** Les appels d'outils sont simulés, donc une « attaque réussie » signifie que l'agent a appelé l'outil malveillant, pas qu'un dommage réel a eu lieu. L'attaquant est fixe et ne s'adapte pas aux défenses. On suppose que l'attaquant peut ajouter ses propres outils à la liste d'outils de l'agent. L'empoisonnement de mémoire est testé par injection de prompt directe avec un seul modèle. Les modèles de 2024 et le benchmark ne couvrent ni MCP ni les systèmes multi-agents.
+
+**Pertinence pour ma recherche.** ASB propose une taxonomie des surfaces d'attaque par étape de l'agent, que je peux réutiliser pour classer d'autres articles. Il comble une lacune identifiée dans l'article 1 (empoisonnement de mémoire, absence de benchmark couvrant tous les types d'attaques). Sa métrique NRP suit la même idée que l'article 2 (la sécurité et l'utilité doivent être rapportées ensemble). Il étend aussi ma lecture d'*AgentDojo*, qui ne couvre que l'injection de prompt indirecte.
+
+---
+
+
+## 4. Comparaison et contribution à l'état de l'art
+
+| Aspect | Article 1 : survey complet | Article 2 : évaluation de défenses | Article 3 : ASB |
+|---|---|---|---|
+| Axe principal | Classification large des attaques et des défenses | Évaluation des défenses contre l'injection de prompt indirecte | Benchmark des attaques et des défenses à chaque étape de l'agent |
+| Approche de recherche | Revue de littérature et taxonomie | Évaluation expérimentale sur un benchmark (AgentDojo) | Nouveau benchmark avec expériences à grande échelle (13 LLM, 10 scénarios) |
+| Contribution principale | Organise les techniques d'attaque, les composants vulnérables et les stratégies de défense | Montre pourquoi la sécurité, l'utilité, la faisabilité et la réplication doivent être rapportées ensemble | Taxonomie des attaques par étape de l'agent, backdoor PoT, métrique NRP |
+| Preuves | Synthèse d'études existantes | Résultats chiffrés avec statistiques | Résultats chiffrés sur de nombreux modèles (sans intervalles de confiance rapportés) |
+| Limites principales | Pas d'expériences propres, deux bases de données, sélection non quantifiée | Un seul benchmark, une seule famille d'attaques, peu d'attaques réussies, deux réplications | Outils simulés, attaquant non adaptatif, modèles de 2024, ni MCP ni multi-agents |
+| Pertinence pour mon travail | Où se situent les menaces et les lacunes, et quelles directions de recherche prioriser | Comment évaluer l'efficacité et le coût d'une défense | Un cadre pour classer les surfaces d'attaque et mesurer le compromis sécurité-utilité |
+
+**Lecture croisée.** L'article 1 appelle des évaluations qui mesurent ensemble la sécurité et l'utilité et qui restent valides face à des attaquants adaptatifs. L'article 2 est un exemple concret d'une telle évaluation, tout en montrant combien il est difficile d'obtenir des conclusions solides (peu de succès d'attaque, peu de réplications). L'article 3 élargit le champ : il montre que la surface d'attaque n'est pas seulement les réponses des outils mais aussi le prompt utilisateur, la mémoire et le prompt système, et il constate que les défenses qu'il teste protègent peu. Dans les trois articles, deux points reviennent : **aucune défense ne suffit seule**, et **le taux de réussite des attaques seul est trompeur**.
+
+Un point à vérifier plus tard : l'article 2 a observé très peu d'attaques réussies sur des modèles récents (GPT-5.4, Claude Sonnet 4.6), alors qu'ASB a mesuré des taux de réussite élevés sur des modèles de 2024. Les deux études utilisent des benchmarks, des outils et des conceptions d'attaque différents, donc elles ne sont pas directement comparables, mais l'écart suggère que des modèles ou des défenses plus récents pourraient changer les résultats.
+
+---
+
+## 5. Avancement de la revue de littérature
+
+La revue couvre maintenant :
+
+- Les risques de sécurité associés aux systèmes d'IA agentique.
+- Les défis de sécurité observés lors du déploiement d'agents.
+- Les attaques par injection de prompt et leur évaluation via AgentDojo.
+- L'évaluation des défenses contre l'injection de prompt indirecte et le compromis sécurité-utilité.
+- Les techniques de cyberattaque plus larges et les stratégies de défense pour les agents basés sur des LLM.
+- Les attaques sur chaque étape de l'agent (prompt utilisateur, outils, mémoire, prompt système) et un benchmark qui les mesure ensemble (ASB).
+
+Cette lecture me donne une vision plus claire des problèmes de sécurité qui touchent les agents basés sur des LLM et des méthodes utilisées pour les évaluer et les atténuer.
+
+---
+
+# Partie B : Développement pratique, agent vocal local et analyse des émotions
+
+## 6. Rappel : ce que j'ai fait avant (l'agent vocal local)
+
+À l'étape précédente, j'ai construit et testé un **prototype local de traitement de la voix** qui enregistre ou charge un audio, transcrit la parole, analyse le texte et sauvegarde un rapport. Tout fonctionne sur ma propre machine.
+
+```text
+Fichier audio / Microphone -> Faster-Whisper (small) -> Transcription
+                           -> Ollama + Qwen3:8B -> Analyse du texte -> *_analyse.txt
+```
+
+| Composant | Rôle |
+|---|---|
+| Python 3.14.7 + `.venv` | Exécute le programme dans un environnement séparé |
+| `agent_vocal.py` | Script principal : choisir ou enregistrer un audio, transcrire, demander l'analyse, sauvegarder le rapport |
+| `sounddevice` | Enregistre la parole via le microphone |
+| Faster-Whisper (`small`) | Transcription de la parole en texte |
+| Ollama + Qwen3:8B | Modèle de langage local qui analyse la transcription |
+
+**Ce que le prototype sait faire :**
+- Charger un fichier audio existant ou enregistrer la parole avec le microphone.
+- Transcrire la parole avec Faster-Whisper.
+- Envoyer la transcription à Qwen3:8B via Ollama.
+- Demander à Qwen le sujet principal, un résumé, les idées clés, les questions et problèmes mentionnés, et les ambiguïtés à vérifier.
+- Sauvegarder la transcription et l'analyse dans un fichier texte.
+
+**Ce qui était déjà testé :**
+- [x] Environnement, script principal et simplification du code.
+- [x] Ollama et Qwen3:8B installés, communication Python-Ollama testée.
+- [x] Enregistrement au microphone et transcription.
+- [x] Rapports texte générés (transcription + analyse de Qwen).
+- [x] Pipeline exécuté avec le **Wi-Fi coupé** : il a fonctionné en local une fois les modèles et dépendances installés.
+
+Qwen reçoit la **transcription, pas l'audio**, donc son résultat dépend de la précision de la transcription, du prompt et de la réponse du modèle.
+
+---
+
+## 7. Nouveau à cette étape : expériences d'analyse des émotions
+
+J'ai exploré deux façons de détecter l'émotion.
+
+### Expérience 1 : à partir des mots (Qwen)
+J'ai modifié les prompts de Qwen pour qu'il identifie les émotions possibles (joie, tristesse, colère, peur, neutre), nomme les mots qui soutiennent sa lecture, dise quand les preuves sont insuffisantes et ne prétende pas connaître l'état réel du locuteur.
+
+- **Avantage :** aucun modèle supplémentaire, seulement un changement de prompt, et cela s'intègre dans le rapport actuel.
+- **Limite :** il lit le sens des mots, pas la voix (ni ton, ni hauteur, ni débit). C'est une **interprétation de l'émotion basée sur le texte**, pas une reconnaissance vocale de l'émotion.
+
+### Expérience 2 : à partir de l'audio (emotion2vec+ base)
+Testé avec **FunASR 1.4.16** dans un environnement séparé. Il analyse directement le signal audio, sans transcription.
+
+- **Enregistrements courts :** il a renvoyé des catégories d'émotion avec des scores. Un résultat a donné environ **99,98 % `sad`** alors que je parlais simplement doucement. Un seul enregistrement ne permet pas de dire si le modèle s'est trompé ni pourquoi, mais cela montre qu'un score élevé n'est pas une preuve de l'état émotionnel réel d'une personne. D'autres tests sont nécessaires.
+- **Long enregistrement (environ 32 min) :** l'analyse a échoué avec un besoin en mémoire **supérieur à 100 Go**, contre mes 8 Go de VRAM. La cause n'est pas confirmée ; elle peut dépendre de la façon dont l'audio est chargé ou traité, donc cela ne signifie pas que le modèle a toujours besoin d'autant.
+- **Le découpage en segments plus petits** n'a pas résolu le problème dans ma configuration.
+
+Cette expérience reste **séparée** de `agent_vocal.py`.
+Je cherche donc maintenant d'autres outils capables d'analyser l'émotion directement depuis la voix, sans passer par la transcription.
+
+---
+
+## 8. Limites
+
+- Le pipeline suit des étapes fixes et ne choisit pas encore ses propres outils.
+- Les résultats d'émotion ne sont pas encore assez fiables : aucune des deux approches ne peut déterminer avec certitude l'état émotionnel réel d'une personne.
+- L'analyse vocale directe n'est pas intégrée dans le pipeline principal.
+
+## 9. Prochaines étapes
+
+**Revue de littérature**
+1. Comparer systématiquement tous les articles lus (types d'attaques, défenses, benchmarks, métriques, limites).
+2. Identifier les lacunes de recherche pertinentes pour mon sujet de doctorat.
+3. Porter une attention particulière à la relation entre l'autonomie des agents, l'usage d'outils, l'injection de prompt, la protection des données et la fiabilité des défenses de sécurité.
+4. Passer de la compréhension de la littérature à une question de recherche plus précise et à une contribution possible à la sécurité des systèmes d'IA agentique.
+5. Poursuivre ma revue de littérature, en me concentrant sur l'empoisonnement de mémoire (l'attaque la moins efficace dans ASB, et une lacune citée dans l'article 1) et sur les défenses qui tiennent face à des attaquants adaptatifs.
+
+**Agent vocal local**
+
+1. Évaluer d'autres outils d'analyse des émotions directement depuis la voix, et les tester sur plusieurs enregistrements.
+2. Garder la lecture de Qwen basée sur le texte comme alternative, en séparant les preuves textuelles des preuves acoustiques.
+
+## 10. Conclusion
+
+Côté théorie, la revue de littérature fournit désormais une bonne base sur la sécurité des agents et sur la façon d'évaluer les défenses, en s'appuyant sur un survey des attaques et défenses, une étude expérimentale des défenses contre l'injection de prompt indirecte, et un benchmark qui teste les attaques à chaque étape d'un agent. Les trois lectures s'accordent sur le fait que les agents sont vulnérables en plusieurs points, que les défenses actuelles ne protègent que partiellement, et que la sécurité doit être mesurée avec l'utilité. Côté pratique, le pipeline principal construit précédemment fonctionne en local, y compris hors ligne. À ce stade, la lecture des émotions par Qwen à partir du texte est déjà utilisable, tandis que la détection d'émotion directement depuis la voix doit encore être revue avant de décider si elle peut être intégrée telle quelle ou si elle demande une approche différente.
+
+---
+
+## Références
+
+[1] N. Tamuka et al., « Securing LLM-based agents against cyberattacks: a comprehensive survey on attack techniques and defense strategies », *Journal of Computer Virology and Hacking Techniques*, vol. 22, article 38, 2026. DOI : [10.1007/s11416-026-00622-3](https://doi.org/10.1007/s11416-026-00622-3)
+
+[2] A. Khan, K. AlKhanbashi et A. Mohamed, « Evaluating Indirect Prompt Injection Defenses in Tool-Using LLM Agents: Security, Utility, and Replication », *Computers*, vol. 15, no. 9, article 570, 2026. DOI : [10.3390/computers15090570](https://doi.org/10.3390/computers15090570)
+
+[3] H. Zhang, J. Huang, K. Mei, Y. Yao, Z. Wang, C. Zhan, H. Wang et Y. Zhang, « Agent Security Bench (ASB): Formalizing and Benchmarking Attacks and Defenses in LLM-based Agents », dans *Proc. International Conference on Learning Representations (ICLR)*, 2025. arXiv : [2410.02644](https://arxiv.org/abs/2410.02644). Code : [https://github.com/agiresearch/ASB](https://github.com/agiresearch/ASB)
 --------------------------------------------------------------------------------------
-# 10.11.2026.  10 novembre 2026
+# 10.11.2026.  10 novembre 2026 ENGLISH VERSION
 
 
 
