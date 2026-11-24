@@ -883,6 +883,12 @@ Mon agent actuel est un **système en cascade** : la voix passe par Whisper, qui
 
 **Proposition 3 : construire mon propre adaptateur, comme dans SpeechLLM.** Whisper gelé, un petit adaptateur entraînable et un petit LLM gelé, entraînés sur mes propres émotions cibles (heureux, stressé, triste...). Avantage : je choisis mes catégories. Inconvénients : il faut des enregistrements annotés avec ces émotions et une carte graphique.
 
+**PROPOSITION 1 : 
+**Ce qui a été réalisé pour l'analyse des émotions**
+
+Mon agent fonctionne en local, sans Internet, et je l'ai amélioré pour qu'il ne se limite plus au texte. Il est composé de deux programmes séparés, placés dans le même dossier. Le premier est l'agent : il transcrit l'audio avec faster-whisper, puis il envoie la transcription à Qwen, qui tourne avec Ollama. Le second, emotion_analyse.py, détecte les émotions directement dans la voix avec le modèle emotion2vec. Comme les enregistrements longs saturaient la mémoire, ce programme découpe d'abord l'audio en tranches de 15 secondes, analyse chaque tranche, puis calcule la moyenne des émotions. L'agent lance ce second programme, récupère les émotions de la voix, et les donne à Qwen avec la transcription. Qwen compare alors ce que la personne dit avec ce que sa voix exprime, et signale les accords et les contradictions. Ainsi, les émotions ne viennent plus seulement des mots, mais aussi du ton de la voix.
+
+
 ### Quels outils pour réaliser ce projet ?
 
  Exemples concrets :
@@ -1071,6 +1077,9 @@ A single model listens to the voice and answers instructions such as "what emoti
 **Proposal 3: Build my own adapter, as in SpeechLLM.**
 
 Frozen Whisper, a small trainable adapter and a small frozen LLM, trained on my own target emotions (happy, stressed, sad...). Advantage: I choose my categories. Drawbacks: it needs recordings annotated with those emotions and a graphics card.
+
+
+
 
 ### Which tools can I use to build this project?
 
