@@ -739,3 +739,178 @@ On the theory side, the literature review now provides a good foundation on agen
 [2] A. Khan, K. AlKhanbashi, and A. Mohamed, "Evaluating Indirect Prompt Injection Defenses in Tool-Using LLM Agents: Security, Utility, and Replication," *Computers*, vol. 15, no. 9, article 570, 2026. DOI: [10.3390/computers15090570](https://doi.org/10.3390/computers15090570)
 
 [3] H. Zhang, J. Huang, K. Mei, Y. Yao, Z. Wang, C. Zhan, H. Wang, and Y. Zhang, "Agent Security Bench (ASB): Formalizing and Benchmarking Attacks and Defenses in LLM-based Agents," in *Proc. International Conference on Learning Representations (ICLR)*, 2025. arXiv: [2410.02644](https://arxiv.org/abs/2410.02644). Code: [https://github.com/agiresearch/ASB](https://github.com/agiresearch/ASB)
+
+--------------------------------------------------------------------------------------------------------------------
+
+# État de l'art : LLM audio de bout en bout (SpeechLLM et MERaLiON)
+
+**Date :** #24 novembre 2026
+
+Au cours de ces deux dernières semaines, j'ai lu deux articles relatifs au multimodal et aux agents IA. Voici l'état de l'art qui en résulte.
+
+**Auteure :** Diya
+
+**Contexte :** dans le cadre de l'état de l'art et de l'avancement de mes lectures, j'ai lu deux articles liés aux agents IA multimodaux (voix + texte). Ce rapport résume chaque article, les compare, puis explique ce que j'en retiens pour mon agent audio, qui doit fonctionner en local.
+
+---
+
+## Article 1 : SpeechLLM (SENSE-ASR)
+
+### Référence
+
+- **Titre :** SpeechLLM: Unified Speech and Language Model for Enhanced Multi-Task Understanding in Low Resource Settings
+- **Auteurs :** Jaekwon Yoo, Kunal Chandiramani, Divya Tadimeti, Abenezer Girma, Chandra Dhir (JPMorganChase et Columbia University)
+- **Publication :** arXiv:2509.04473, cs.CL, 29 août 2025
+- **Lien :** https://arxiv.org/abs/2509.04473
+- **Benchmark utilisé :** SLUE (Spoken Language Understanding Evaluation), avec les jeux SLUE-VoxPopuli (reconnaissance d'entités) et SLUE-VoxCeleb (sentiment)
+- Article du benchmark : https://arxiv.org/abs/2111.10367
+- Code et classement : https://github.com/asappresearch/slue-toolkit
+
+### Introduction : ce que les auteurs ont fait
+
+Relier un encodeur de parole à un grand modèle de langage (LLM) demande beaucoup de données et de ressources. Les auteurs proposent SENSE-ASR, un système de bout en bout qui fait trois tâches en une seule passe : la transcription (ASR), la reconnaissance d'entités nommées (NER : personnes, lieux, dates) et l'analyse de sentiment (SA : positif, négatif, neutre). Leur idée est de ne rien réentraîner de lourd : seul un petit adaptateur est entraîné. Pour compenser le manque de données annotées, un LLM (GPT-4o) annote automatiquement 960 heures de LibriSpeech avec des entités.
+
+### Architecture
+
+- **Encodeur de parole :** Whisper (variantes small et medium), gelé. La voix devient une suite de vecteurs.
+- **Adaptateur (la contribution principale) :** un *adaptive average pooling* réduit 1500 vecteurs à 250, une normalisation stabilise les valeurs, puis une projection linéaire adapte la taille à celle du LLM. Environ 1,6 à 2,1 millions de paramètres entraînables.
+- **LLM :** TinyLlama (petit modèle entraîné sur 3 000 milliards de tokens), gelé (ou légèrement affiné avec LoRA en fin de parcours).
+- **Classifieur régularisateur :** un petit réseau utilisé uniquement pendant l'entraînement. Il essaie de deviner les entités ou le sentiment à partir de la sortie de l'adaptateur, ce qui force celui-ci à bien conserver ces informations. Il est retiré à l'inférence.
+
+### Entraînement
+
+Trois étapes, du général au spécifique :
+
+1. Pré-entraînement sur LibriSpeech (960 h de livres lus) pour apprendre à transcrire.
+2. Poursuite sur LibriSpeech annoté automatiquement par GPT-4o (entités), pour apprendre aussi à repérer les entités.
+3. Ajustement fin sur les données annotées par des humains : SLUE-VoxPopuli (environ 15 h, discours du Parlement européen) pour les entités, SLUE-VoxCeleb (environ 12,8 h, interviews) pour le sentiment.
+
+Des augmentations de données (changement de vitesse, SpecAugment) sont appliquées.
+
+### Résultats
+
+- **Transcription (LibriSpeech, Whisper medium) :** taux d'erreur de mots de 3,67 % sur test-clean contre 5,01 % pour la méthode de référence SLAM-ASR, soit environ 26 % d'amélioration relative, avec 2,1 M de paramètres entraînables contre 15,2 M.
+- **Entités (VoxPopuli) :** le score F1 passe de 62,0 (sans préparation) à 64,3 (LibriSpeech), 65,0 (annotations GPT-4o), 65,8 (classifieur), puis 68,9 (LoRA).
+- **Sentiment (VoxCeleb) :** le score F1 passe de 58,9 à 61,0 (LibriSpeech), 63,6 (classifieur), puis 65,9 (LoRA), contre 48,1 à 49,8 pour les références E2E du benchmark.
+- **Score global SLUE :** 74,6 contre 68,1 pour le meilleur système E2E de référence (environ 9,5 % d'amélioration relative), proche du système en cascade (75,7).
+
+### Conclusion des auteurs
+
+Un adaptateur très léger, associé à un entraînement en plusieurs étapes qui utilise des annotations synthétiques, suffit à donner à un LLM de bonnes capacités de compréhension de la parole, avec peu de paramètres entraînables et peu d'annotations manuelles.
+
+### Limites (mon analyse)
+
+1. **Tâches et langue restreintes :** seulement transcription, entités et sentiment en trois classes, sur de l'anglais. Pas d'émotions fines (stress, tristesse).
+2. **Peu de données humaines et des incohérences de chiffres :** 15 h pour les entités ; certains chiffres diffèrent entre le texte et les tableaux (par exemple 74,3 et 74,6 pour le même score).
+3. **Dépendance à un LLM externe pour annoter :** GPT-4o est utilisé pour la préparation des données, ce qui pose un problème si les données sont sensibles et doivent rester en local.
+
+---
+
+## Article 2 : MERaLiON-AudioLLM
+
+### Référence
+
+- **Titre :** MERaLiON-AudioLLM: Bridging Audio and Language with Large Language Models
+- **Auteurs :** MERaLiON Team : Yingxu He, Zhuohan Liu, Shuo Sun, Bin Wang, Wenyu Zhang, Xunlong Zou, Nancy F. Chen, Ai Ti Aw (Institute for Infocomm Research, A*STAR, Singapour)
+- **Publication :** arXiv:2412.09818, cs.CL, version 3 du 16 janvier 2025
+- **Lien :** https://arxiv.org/abs/2412.09818
+- **Modèle :** https://huggingface.co/MERaLiON/MERaLiON-AudioLLM-Whisper-SEA-LION
+- **Benchmark utilisé :** AudioBench (Wang et al., 2024), avec plusieurs jeux de données de reconnaissance vocale, traduction, questions-réponses, résumé de dialogues, instructions vocales et paralinguistique.
+- Article du benchmark : https://arxiv.org/abs/2406.16020
+- Code et classement : https://github.com/AudioLLMs/AudioBench
+
+### Introduction : ce que les auteurs ont fait
+
+L'équipe a construit le premier modèle voix-texte conçu pour le contexte multilingue et multiculturel de Singapour (anglais, chinois, malais, tamoul et Singlish). Les systèmes classiques de reconnaissance vocale se trompent souvent avec les accents, les dialectes et les mélanges de langues. Le modèle prend en entrée un couple (audio, consigne écrite) et répond par du texte. Il fait plusieurs tâches : transcription, traduction, questions-réponses sur audio, résumé de conversations, suivi d'instructions vocales et reconnaissance d'informations paralinguistiques (genre, accent, émotion).
+
+### Architecture
+
+- **Encodeur audio :** MERaLiON-Whisper, basé sur l'encodeur de Whisper-large-v2 et réentraîné sur des données locales (1500 vecteurs de dimension 1280 en sortie).
+- **Adaptateur :** un perceptron multicouche simple appelé MLP-100. Il regroupe les vecteurs par paquets de 15 et produit 100 vecteurs, à la taille attendue par le LLM.
+- **Décodeur de texte :** SEA-LION V3, un LLM local construit à partir de Gemma 2 (9 milliards de paramètres) et poursuivi sur 200 milliards de tokens dans les langues de Singapour et d'Asie du Sud-Est.
+- Les vecteurs audio et la consigne tokenisée sont concaténés, puis le LLM génère la réponse.
+
+### Entraînement
+
+1. **Réentraînement de l'encodeur** sur des données de reconnaissance vocale locales nettoyées (corpus national IMDA, données internes et publiques).
+2. **Affinage multimodal par instructions** sur 260 000 heures de paires voix-texte, dont une grande partie vient du National Speech Corpus (environ 10 600 h d'anglais de Singapour), complétées par des données synthétiques (résumé de dialogues, questions-réponses, genre).
+3. L'encodeur et l'adaptateur sont entièrement réentraînés ; le LLM est partiellement affiné avec LoRA (rang 8). Entraînement : environ 200 000 étapes, 2 jours sur 128 GPU H100, avec augmentation de spectrogrammes.
+
+### Résultats
+
+L'évaluation utilise AudioBench, avec comparaison à Qwen2-Audio 7B, WavLLM, SALMONN et à un système en cascade.
+
+- **Reconnaissance vocale locale :** sur la partie 2 du corpus national de Singapour (lectures avec noms de personnes, plats, lieux, marques locales), le taux d'erreur de mots est de 5 %, contre 19 % pour Qwen2-Audio et 33 % pour Whisper-large-v2.
+- **Données jamais vues (Earnings21 et Earnings22) :** meilleur que les autres modèles audio-LLM comparés.
+- **Résumé de dialogues et questions-réponses :** compétitif, avec de meilleurs scores que les autres audio-LLM sur la plupart des jeux de données locaux.
+- **Point faible :** sentiment et émotion (jeux MELD), où le modèle est clairement moins bon que les autres.
+
+### Conclusion des auteurs
+
+Une curation soignée des données et une optimisation adaptée permettent de réduire nettement l'écart entre parole et texte dans un contexte local. Les modèles généralistes comme Whisper restent performants, mais ont besoin d'être localisés pour atteindre de bons résultats dans un contexte précis.
+
+### Limites (annoncées par les auteurs)
+
+1. **Contexte audio limité à 30 secondes :** pas de longues conversations ni d'échanges à plusieurs tours pour l'instant.
+2. **Oubli catastrophique :** l'affinage complet du modèle pour la reconnaissance et la traduction lui a fait perdre une partie de sa capacité à suivre certaines consignes écrites.
+3. **Faiblesse sur les émotions et absence d'alignement de sécurité :** les performances sur le sentiment et l'émotion sont inférieures, et le modèle n'a pas été aligné spécifiquement pour la sécurité.
+
+---
+
+## Comparaison des deux travaux
+
+Les deux articles reposent sur la même idée : un encodeur Whisper, un adaptateur et un LLM, le tout de bout en bout, sans passer par une transcription intermédiaire. La différence est l'objectif et l'échelle. **SpeechLLM** vise la sobriété : un adaptateur minuscule (environ 2 millions de paramètres), un petit LLM gelé, quelques centaines d'heures de données, trois tâches en anglais (transcription, entités, sentiment), évalué sur SLUE. **MERaLiON** vise la portée et la localisation : un encodeur et un adaptateur entièrement réentraînés, un LLM de 9 milliards de paramètres légèrement affiné, 260 000 heures de données, six types de tâches et des accents de Singapour, évalué sur AudioBench. Le premier est plus économique et ciblé, le second est plus grand, plus polyvalent et plus coûteux à entraîner. Tous deux ont une faiblesse commune : les émotions fines restent mal couvertes.
+
+---
+
+## Partie pratique : ce que j'en retiens pour mon agent audio local
+
+### Mon constat
+
+Mon agent actuel est un **système en cascade** : la voix passe par Whisper, qui produit une transcription, puis un modèle de langage (Qwen) lit ce texte et répond. Le défaut est que l'analyse des émotions se fait à partir du texte seul : le ton, le stress ou la tristesse contenus dans la voix sont perdus. Après lecture des deux articles, je souhaite passer à un **système de bout en bout** qui lit les émotions directement à partir de la voix, comme dans ces travaux. Contrainte importante : mes données sont sensibles et ne doivent pas être envoyées sur Internet, donc tout doit tourner en local.
+
+### Ce que j'ai retenu des articles
+
+- Un petit adaptateur suffit à relier la voix à un LLM sans tout réentraîner, ce qui réduit beaucoup les besoins en mémoire.
+- Entraîner en plusieurs étapes (d'abord du général, puis du spécifique) améliore les résultats quand on a peu de données annotées.
+- Un classifieur auxiliaire utilisé seulement pendant l'entraînement aide l'adaptateur à conserver l'information utile (ici, le sentiment).
+- Attention : ni l'un ni l'autre n'a résolu les émotions fines. SpeechLLM ne teste que trois classes de sentiment, et MERaLiON est plus faible sur les émotions.
+
+### Trois propositions qui peuvent marcher en local
+
+**Proposition 1 : un modèle d'émotion déjà entraîné en parallèle de la transcription (la plus simple).** La voix passe directement dans un modèle spécialisé dans les émotions, par exemple emotion2vec+, qui classe l'émotion (colère, joie, tristesse, peur, neutre...) sans transcription. En parallèle, Whisper transcrit le contenu, et Qwen rédige l'analyse à partir du texte et de l'étiquette d'émotion. D'après les fiches publiques du modèle, il est léger (environ 90 à 300 millions de paramètres) et peut tourner avec environ 4 Go de mémoire.
+
+**Proposition 2 : un modèle audio direct comme Qwen2-Audio.** Un seul modèle écoute la voix et répond à des consignes comme « quelle émotion exprime cette personne ? ». Les versions compressées demandent d'environ 4 à 16 Go de mémoire selon la compression. Il faut tester sa fiabilité sur les émotions, car les modèles de ce type sont plus faibles sur ce point dans MERaLiON.
+
+**Proposition 3 : construire mon propre adaptateur, comme dans SpeechLLM.** Whisper gelé, un petit adaptateur entraînable et un petit LLM gelé, entraînés sur mes propres émotions cibles (heureux, stressé, triste...). Avantage : je choisis mes catégories. Inconvénients : il faut des enregistrements annotés avec ces émotions et une carte graphique.
+
+### Quels outils pour réaliser ce projet ?
+
+Un « outil » est simplement un programme ou une bibliothèque de code qu'on utilise pour construire une partie du projet. Exemples concrets :
+
+- **Python :** le langage dans lequel tout se programme.
+- **PyTorch :** la bibliothèque qui permet de créer et d'entraîner des réseaux de neurones, comme l'adaptateur.
+- **Hugging Face Transformers :** la bibliothèque qui permet de télécharger et d'utiliser des modèles d'IA existants (Whisper, Qwen, TinyLlama, MERaLiON) en local.
+- **FunASR :** une bibliothèque qui permet d'utiliser emotion2vec directement.
+- **PEFT (pour LoRA) :** une bibliothèque qui permet de modifier légèrement un grand modèle en n'entraînant qu'une petite partie.
+- **Ollama ou llama.cpp :** des programmes qui permettent de faire tourner des modèles de langage compressés sur un ordinateur ordinaire.
+- **Librosa :** une bibliothèque pour lire et préparer des fichiers audio.
+
+Pour garder les données en local : télécharger les modèles une seule fois, puis couper l'accès Internet pendant le traitement, et stocker les enregistrements sur un disque chiffré.
+
+### Plan d'action proposé
+
+1. Commencer par la Proposition 1, la plus légère et la plus rapide à mettre en place.
+2. Tester sur quelques enregistrements et noter les erreurs.
+3. Si les catégories d'émotions ne suffisent pas, essayer la Proposition 2.
+4. Ne passer à la Proposition 3 que si les deux premières ne répondent pas au besoin, car elle demande des données annotées et plus de calcul.
+
+---
+
+## Références
+
+1. J. Yoo, K. Chandiramani, D. Tadimeti, A. Girma, C. Dhir. *SpeechLLM: Unified Speech and Language Model for Enhanced Multi-Task Understanding in Low Resource Settings.* arXiv:2509.04473, 2025. https://arxiv.org/abs/2509.04473
+2. MERaLiON Team (Y. He, Z. Liu, S. Sun, B. Wang, W. Zhang, X. Zou, N. F. Chen, A. T. Aw). *MERaLiON-AudioLLM: Bridging Audio and Language with Large Language Models.* arXiv:2412.09818, 2025. https://arxiv.org/abs/2412.09818
+3. S. Shon et al. *SLUE: New Benchmark Tasks for Spoken Language Understanding Evaluation on Natural Speech.* arXiv:2111.10367. https://arxiv.org/abs/2111.10367 ; code : https://github.com/asappresearch/slue-toolkit
+4. B. Wang et al. *AudioBench: A Universal Benchmark for Audio Large Language Models.* arXiv:2406.16020, NAACL 2025. https://arxiv.org/abs/2406.16020 ; code : https://github.com/AudioLLMs/AudioBench
+````
