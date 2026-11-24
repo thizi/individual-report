@@ -913,7 +913,177 @@ Pour garder les données en local : télécharger les modèles une seule fois, p
 3. S. Shon et al. *SLUE: New Benchmark Tasks for Spoken Language Understanding Evaluation on Natural Speech.* arXiv:2111.10367. https://arxiv.org/abs/2111.10367 ; code : https://github.com/asappresearch/slue-toolkit
 4. B. Wang et al. *AudioBench: A Universal Benchmark for Audio Large Language Models.* arXiv:2406.16020, NAACL 2025. https://arxiv.org/abs/2406.16020 ; code : https://github.com/AudioLLMs/AudioBench
 ````
+# State of the Art: End-to-End Audio LLMs (SpeechLLM and MERaLiON)
 
+**Date:** 24 November 2026
+
+Over the past two weeks, I read two articles related to multimodal AI and agents. Here is the resulting state of the art.
+
+**Author:** Diya
+
+**Context:** as part of my state-of-the-art review and reading progress, I read two articles related to multimodal AI agents (voice + text). This report summarizes each article, compares them, and then explains what I take from them for my audio agent, which must run locally.
+
+---
+
+## Article 1: SpeechLLM (SENSE-ASR)
+
+### Reference
+
+- **Title:** SpeechLLM: Unified Speech and Language Model for Enhanced Multi-Task Understanding in Low Resource Settings
+- **Authors:** Jaekwon Yoo, Kunal Chandiramani, Divya Tadimeti, Abenezer Girma, Chandra Dhir (JPMorganChase and Columbia University)
+- **Publication:** arXiv:2509.04473, cs.CL, 29 August 2025
+- **Link:** https://arxiv.org/abs/2509.04473
+- **Benchmark used:** SLUE (Spoken Language Understanding Evaluation), with SLUE-VoxPopuli (named entity recognition) and SLUE-VoxCeleb (sentiment)
+  - Benchmark paper: https://arxiv.org/abs/2111.10367
+  - Code and leaderboard: https://github.com/asappresearch/slue-toolkit
+
+### Introduction: what the authors did
+
+Connecting a speech encoder to a large language model (LLM) usually requires a lot of data and compute. The authors propose SENSE-ASR, an end-to-end system that performs three tasks in a single pass: transcription (ASR), named entity recognition (NER: people, places, dates) and sentiment analysis (SA: positive, negative, neutral). The key idea is to avoid heavy retraining: only a small adapter is trained. To compensate for the lack of annotated data, an LLM (GPT-4o) automatically annotates 960 hours of LibriSpeech with entities.
+
+### Architecture
+
+- **Speech encoder:** Whisper (small and medium variants), frozen. Speech becomes a sequence of vectors.
+- **Adapter (the main contribution):** an adaptive average pooling layer reduces 1500 vectors to 250, a normalization layer stabilizes the values, and a linear projection matches the LLM's embedding size. Roughly 1.6 to 2.1 million trainable parameters.
+- **LLM:** TinyLlama (a small model trained on 3 trillion tokens), frozen (or lightly fine-tuned with LoRA at the end).
+- **Regularizer classifier:** a small network used only during training. It tries to predict entities or sentiment from the adapter's output, which forces the adapter to preserve that information. It is removed at inference.
+
+### Training
+
+Three stages, from general to specific:
+
+1. Pre-training on LibriSpeech (960 h of read books) to learn transcription.
+2. Continued training on LibriSpeech automatically annotated by GPT-4o (entities), to also learn to detect entities.
+3. Fine-tuning on human-annotated data: SLUE-VoxPopuli (about 15 h, European Parliament speeches) for entities, SLUE-VoxCeleb (about 12.8 h, interviews) for sentiment.
+
+Data augmentation (speed perturbation, SpecAugment) is applied.
+
+### Results
+
+- **Transcription (LibriSpeech, Whisper medium):** word error rate of 3.67% on test-clean versus 5.01% for the baseline SLAM-ASR, about 26% relative improvement, with 2.1M trainable parameters versus 15.2M.
+- **Entities (VoxPopuli):** F1 goes from 62.0 (no preparation) to 64.3 (LibriSpeech), 65.0 (GPT-4o annotations), 65.8 (classifier), then 68.9 (LoRA).
+- **Sentiment (VoxCeleb):** F1 goes from 58.9 to 61.0 (LibriSpeech), 63.6 (classifier), then 65.9 (LoRA), versus 48.1 to 49.8 for the benchmark's end-to-end baselines.
+- **Overall SLUE score:** 74.6 versus 68.1 for the best end-to-end baseline (about 9.5% relative improvement), close to the cascade system (75.7).
+
+### Authors' conclusion
+
+A very lightweight adapter, combined with multi-stage training that uses synthetic annotations, is enough to give an LLM strong speech understanding capabilities, with few trainable parameters and little manual annotation.
+
+### Limitations (my analysis)
+
+1. **Narrow tasks and language:** only transcription, entities and three-class sentiment, in English. No fine-grained emotions (stress, sadness).
+2. **Little human data and number inconsistencies:** 15 h for entities; some figures differ between the text and the tables (for example 74.3 and 74.6 for the same score).
+3. **Dependence on an external LLM for annotation:** GPT-4o is used for data preparation, which is a problem if the data is sensitive and must stay local.
+
+---
+
+## Article 2: MERaLiON-AudioLLM
+
+### Reference
+
+- **Title:** MERaLiON-AudioLLM: Bridging Audio and Language with Large Language Models
+- **Authors:** MERaLiON Team: Yingxu He, Zhuohan Liu, Shuo Sun, Bin Wang, Wenyu Zhang, Xunlong Zou, Nancy F. Chen, Ai Ti Aw (Institute for Infocomm Research, A*STAR, Singapore)
+- **Publication:** arXiv:2412.09818, cs.CL, version 3, 16 January 2025
+- **Link:** https://arxiv.org/abs/2412.09818
+- **Model:** https://huggingface.co/MERaLiON/MERaLiON-AudioLLM-Whisper-SEA-LION
+- **Benchmark used:** AudioBench (Wang et al., 2024), with datasets for speech recognition, translation, question answering, dialogue summarization, speech instruction and paralinguistics.
+  - Benchmark paper: https://arxiv.org/abs/2406.16020
+  - Code and leaderboard: https://github.com/AudioLLMs/AudioBench
+
+### Introduction: what the authors did
+
+The team built the first speech-text model designed for Singapore's multilingual and multicultural context (English, Chinese, Malay, Tamil and Singlish). Conventional speech recognition systems often struggle with accents, dialects and language mixing. The model takes an (audio, text instruction) pair as input and answers with text. It handles several tasks: transcription, translation, spoken question answering, conversation summarization, spoken instruction following and paralinguistic recognition (gender, accent, emotion).
+
+### Architecture
+
+- **Audio encoder:** MERaLiON-Whisper, based on the Whisper-large-v2 encoder and retrained on local data (1500 vectors of dimension 1280 as output).
+- **Adapter:** a simple multilayer perceptron called MLP-100. It groups vectors in blocks of 15 and outputs 100 vectors, at the size expected by the LLM.
+- **Text decoder:** SEA-LION V3, a local LLM built from Gemma 2 (9 billion parameters) and further trained on 200 billion tokens in Singapore and Southeast Asian languages.
+- The audio vectors and the tokenized instruction are concatenated, then the LLM generates the answer.
+
+### Training
+
+1. **Encoder retraining** on cleaned local speech recognition data (national IMDA corpus, in-house and public data).
+2. **Multimodal instruction fine-tuning** on 260,000 hours of speech-text pairs, much of it from the National Speech Corpus (about 10,600 h of Singapore English), complemented by synthetic data (dialogue summarization, question answering, gender).
+3. The encoder and adapter are fully retrained; the LLM is partially fine-tuned with LoRA (rank 8). Training: about 200,000 steps, 2 days on 128 H100 GPUs, with spectrogram augmentation.
+
+### Results
+
+Evaluation uses AudioBench, compared against Qwen2-Audio 7B, WavLLM, SALMONN and a cascade system.
+
+- **Local speech recognition:** on part 2 of Singapore's national corpus (readings with local names of people, dishes, places and brands), the word error rate is 5%, versus 19% for Qwen2-Audio and 33% for Whisper-large-v2.
+- **Unseen data (Earnings21 and Earnings22):** better than the other audio LLMs compared.
+- **Dialogue summarization and question answering:** competitive, with better scores than the other audio LLMs on most local datasets.
+- **Weak point:** sentiment and emotion (MELD datasets), where the model is clearly worse than the others.
+
+### Authors' conclusion
+
+Careful data curation and suitable optimization significantly narrow the gap between speech and text in a local context. General-purpose models like Whisper remain strong, but need localization to reach good results in a specific context.
+
+### Limitations (stated by the authors)
+
+1. **Audio context limited to 30 seconds:** no long conversations or multi-turn exchanges for now.
+2. **Catastrophic forgetting:** full fine-tuning for recognition and translation made the model lose part of its ability to follow certain written instructions.
+3. **Weakness on emotions and no safety alignment:** performance on sentiment and emotion is lower, and the model has not been specifically aligned for safety.
+
+---
+
+## Comparison of the two works
+
+Both articles rely on the same idea: a Whisper encoder, an adapter and an LLM, end to end, without an intermediate transcription. The difference is in goal and scale. **SpeechLLM** aims for frugality: a tiny adapter (about 2 million parameters), a small frozen LLM, a few hundred hours of data, three tasks in English (transcription, entities, sentiment), evaluated on SLUE. **MERaLiON** aims for breadth and localization: a fully retrained encoder and adapter, a lightly fine-tuned 9-billion-parameter LLM, 260,000 hours of data, six task types and Singaporean accents, evaluated on AudioBench. The first is cheaper and more targeted, the second is larger, more versatile and more expensive to train. Both share a weakness: fine-grained emotions remain poorly covered.
+
+---
+
+## Practical part: what I take from this for my local audio agent
+
+### My observation
+
+My current agent is a **cascade system**: the voice goes through Whisper, which produces a transcript, then a language model (Qwen) reads that text and answers. The flaw is that emotion analysis is done from text alone: tone, stress or sadness carried by the voice are lost. After reading both articles, I want to move to an **end-to-end system** that reads emotions directly from the voice, as in these works. Important constraint: my data is sensitive and must not be sent over the Internet, so everything must run locally.
+
+### What I retained from the articles
+
+- A small adapter is enough to connect speech to an LLM without retraining everything, which greatly reduces memory needs.
+- Training in several stages (general first, then specific) improves results when annotated data is scarce.
+- An auxiliary classifier used only during training helps the adapter keep useful information (here, sentiment).
+- Caution: neither article has solved fine-grained emotions. SpeechLLM only tests three sentiment classes, and MERaLiON is weaker on emotions.
+
+### Three proposals that can work locally
+
+**Proposal 1: a pretrained emotion model running in parallel with transcription (the simplest).** The voice goes directly into a model specialized in emotions, for example emotion2vec+, which classifies the emotion (angry, happy, sad, fearful, neutral...) without transcription. In parallel, Whisper transcribes the content, and Qwen writes the analysis from the text and the emotion label. According to the model's public pages, it is lightweight (about 90 to 300 million parameters) and can run with about 4 GB of memory.
+
+**Proposal 2: a direct audio model such as Qwen2-Audio.** A single model listens to the voice and answers instructions such as "what emotion does this person express?". Compressed versions need roughly 4 to 16 GB of memory depending on the compression. Its reliability on emotions must be tested, since models of this type are weaker on this point in MERaLiON.
+
+**Proposal 3: build my own adapter, as in SpeechLLM.** Frozen Whisper, a small trainable adapter and a small frozen LLM, trained on my own target emotions (happy, stressed, sad...). Advantage: I choose my categories. Drawbacks: it needs recordings annotated with those emotions and a graphics card.
+
+### Which tools can I use to build this project?
+
+A "tool" is simply a program or code library used to build one part of the project. Concrete examples:
+
+- **Python:** the language everything is programmed in.
+- **PyTorch:** the library for creating and training neural networks, such as the adapter.
+- **Hugging Face Transformers:** the library for downloading and running existing AI models (Whisper, Qwen, TinyLlama, MERaLiON) locally.
+- **FunASR:** a library that lets me use emotion2vec directly.
+- **PEFT (for LoRA):** a library that lets me lightly modify a large model by training only a small part of it.
+- **Ollama or llama.cpp:** programs that let me run compressed language models on an ordinary computer.
+- **Librosa:** a library for reading and preparing audio files.
+
+To keep data local: download the models once, then cut Internet access while processing, and store recordings on an encrypted disk.
+
+### Proposed action plan
+
+1. Start with Proposal 1, the lightest and fastest to set up.
+2. Test on a few recordings and note the errors.
+3. If the emotion categories are not enough, try Proposal 2.
+4. Move to Proposal 3 only if the first two do not meet the need, since it requires annotated data and more compute.
+
+---
+
+## References
+
+1. J. Yoo, K. Chandiramani, D. Tadimeti, A. Girma, C. Dhir. *SpeechLLM: Unified Speech and Language Model for Enhanced Multi-Task Understanding in Low Resource Settings.* arXiv:2509.04473, 2025. https://arxiv.org/abs/2509.04473
+2. MERaLiON Team (Y. He, Z. Liu, S. Sun, B. Wang, W. Zhang, X. Zou, N. F. Chen, A. T. Aw). *MERaLiON-AudioLLM: Bridging Audio and Language with Large Language Models.* arXiv:2412.09818, 2025. https://arxiv.org/abs/2412.09818
+3. S. Shon et al. *SLUE: New Benchmark Tasks for Spoken Language Understanding Evaluation on Natural Speech.* arXiv:2111.10367. https://arxiv.org/abs/2111.10367 ; code: https://github.com/asappresearch/slue-toolkit
+4. B. Wang et al. *AudioBench: A Universal Benchmark for Audio Large Language Models.* arXiv:2406.16020, NAACL 2025. https://arxiv.org/abs/2406.16020 ; code: https://github.com/AudioLLMs/AudioBench
 
 
 
