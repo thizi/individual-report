@@ -744,11 +744,10 @@ On the theory side, the literature review now provides a good foundation on agen
 
 # État de l'art : LLM audio de bout en bout (SpeechLLM et MERaLiON)
 
-**Date :** #24 novembre 2026
+# **Date : 24.11.2026 **
 
 Au cours de ces deux dernières semaines, j'ai lu deux articles relatifs au multimodal et aux agents IA. Voici l'état de l'art qui en résulte.
 
-**Auteure :** Diya
 
 **Contexte :** dans le cadre de l'état de l'art et de l'avancement de mes lectures, j'ai lu deux articles liés aux agents IA multimodaux (voix + texte). Ce rapport résume chaque article, les compare, puis explique ce que j'en retiens pour mon agent audio, qui doit fonctionner en local.
 
@@ -886,7 +885,7 @@ Mon agent actuel est un **système en cascade** : la voix passe par Whisper, qui
 
 ### Quels outils pour réaliser ce projet ?
 
-Un « outil » est simplement un programme ou une bibliothèque de code qu'on utilise pour construire une partie du projet. Exemples concrets :
+ Exemples concrets :
 
 - **Python :** le langage dans lequel tout se programme.
 - **PyTorch :** la bibliothèque qui permet de créer et d'entraîner des réseaux de neurones, comme l'adaptateur.
@@ -914,3 +913,8 @@ Pour garder les données en local : télécharger les modèles une seule fois, p
 3. S. Shon et al. *SLUE: New Benchmark Tasks for Spoken Language Understanding Evaluation on Natural Speech.* arXiv:2111.10367. https://arxiv.org/abs/2111.10367 ; code : https://github.com/asappresearch/slue-toolkit
 4. B. Wang et al. *AudioBench: A Universal Benchmark for Audio Large Language Models.* arXiv:2406.16020, NAACL 2025. https://arxiv.org/abs/2406.16020 ; code : https://github.com/AudioLLMs/AudioBench
 ````
+
+
+
+
+
